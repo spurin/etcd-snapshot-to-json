@@ -25,7 +25,7 @@ docker run --rm -v /path/to/snapshot:/snapshots spurin/etcd-snapshot-to-json:lat
 - **Explanation**:
   - `--rm`: Automatically removes the container after it finishes.
   - `-v /path/to/snapshot:/snapshots`: Mounts the local directory containing `snapshot.db` to `/snapshots` in the container.
-  - `spurin/etcd-snapshot-to-json:latest`: Specifies the Docker image.
+  - `spurin/etcd-snapshot-to-json:latest`: Specifies the container image.
   - `/snapshots/snapshot.db`: The path to the snapshot file within the container.
 
 #### Example Output
