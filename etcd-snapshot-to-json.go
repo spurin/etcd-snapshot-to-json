@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"flag"
 	"fmt"
-	"log"
 	"os"
 	"unicode/utf8"
 
@@ -13,24 +13,28 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// KeyValueJSON represents a key-value pair in JSON format.
+// KeyValueJSON represents a key-value pair in JSON format
 type KeyValueJSON struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: etcd-snapshot-to-json <snapshot-file>")
-		os.Exit(0)
-	}
+	// Command-line flags
+	flag.Parse()
 
-	snapshotFile := os.Args[1]
+	// Get the snapshot file path from the first positional argument
+	if flag.NArg() == 0 {
+		fmt.Fprintln(os.Stderr, "Usage: etcd_snapshot_to_json <snapshot-file>")
+		os.Exit(1)
+	}
+	snapshotFile := flag.Arg(0)
 
 	// Open the snapshot file with bbolt
 	db, err := bolt.Open(snapshotFile, 0600, nil)
 	if err != nil {
-		log.Fatalf("Failed to open snapshot file: %v", err)
+		fmt.Fprintln(os.Stderr, "Error: Failed to open snapshot file.")
+		os.Exit(1)
 	}
 	defer db.Close()
 
@@ -41,52 +45,52 @@ func main() {
 	err = db.View(func(tx *bolt.Tx) error {
 		return tx.ForEach(func(name []byte, b *bolt.Bucket) error {
 			return b.ForEach(func(k, v []byte) error {
-				// Decode the value as a protobuf KeyValue message
+				// Decode using protobuf's mvccpb.KeyValue structure
 				kv := &mvccpb.KeyValue{}
 				if err := proto.Unmarshal(v, kv); err != nil {
-					log.Printf("Failed to decode value for key %s: %v", k, err)
+					// Skip entries that fail to decode without logging to stdout
 					return nil
 				}
 
-				// Add decoded key-value to the list, converting value to JSON if possible
-				kvJSON := KeyValueJSON{
-					Key:   string(kv.Key),
-					Value: interpretValue(kv.Value),
-				}
-				kvPairs = append(kvPairs, kvJSON)
+				// Decode the key as a string
+				keyStr := decodeOrReturnBase64(kv.Key)
+
+				// Process the value, conditionally decoding if valid Base64
+				valueStr := decodeOrReturnBase64(kv.Value)
+
+				// Append to the JSON output slice
+				kvPairs = append(kvPairs, KeyValueJSON{
+					Key:   keyStr,
+					Value: valueStr,
+				})
 				return nil
 			})
 		})
 	})
 	if err != nil {
-		log.Fatalf("Failed to read snapshot: %v", err)
+		fmt.Fprintln(os.Stderr, "Error: Failed to read snapshot.")
+		os.Exit(1)
 	}
 
-	// Marshal the entire list of key-value pairs as JSON
+	// Marshal the entire list of key-value pairs as JSON and print to stdout
 	jsonOutput, err := json.MarshalIndent(kvPairs, "", "  ")
 	if err != nil {
-		log.Fatalf("Failed to marshal JSON: %v", err)
+		fmt.Fprintln(os.Stderr, "Error: Failed to marshal JSON.")
+		os.Exit(1)
 	}
 	fmt.Println(string(jsonOutput))
 }
 
-// interpretValue returns a JSON string for the value, attempting to decode it if possible
-func interpretValue(value []byte) string {
-	// Check if value is valid UTF-8 and printable
-	if utf8.Valid(value) && isPrintable(string(value)) {
-		return string(value)
+// decodeOrReturnBase64 attempts to decode a string if it's valid Base64; otherwise, returns it as-is
+func decodeOrReturnBase64(data []byte) string {
+	// Check if the data is valid UTF-8; if it is, return it as-is
+	if utf8.Valid(data) {
+		return string(data)
 	}
 
-	// If not printable, return the value as Base64-encoded string
-	return base64.StdEncoding.EncodeToString(value)
-}
-
-// isPrintable checks if a string contains only printable characters
-func isPrintable(s string) bool {
-	for _, r := range s {
-		if r < 32 || r > 126 {
-			return false
-		}
+	// Attempt Base64 decoding, return as-is if not successful
+	if decoded, err := base64.StdEncoding.DecodeString(string(data)); err == nil {
+		return string(decoded)
 	}
-	return true
+	return string(data)
 }

@@ -1,6 +1,6 @@
 # etcd-snapshot-to-json
 
-`etcd-snapshot-to-json` is a lightweight tool for converting `etcd` snapshots to JSON format. This tool allows you to inspect `etcd` snapshot contents by outputting key-value data in a human-readable JSON format.
+`etcd-snapshot-to-json` is a lightweight tool for displaying `etcd` snapshots in a JSON format.
 
 This repository has an associated container image for convenience.
 
