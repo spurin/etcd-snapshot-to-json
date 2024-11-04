@@ -1,3 +1,11 @@
+# Retired: For reference only
+
+After creating this I learnt about auger - https://github.com/etcd-io/auger
+
+Auger is a sub project under the etcd ecosystem that is a much better option. Whilst this utility will decode a snapshot file to a somewhat readable format, auger takes this further by decoding kubernetes protobuf entries, providing output that is more akin to what you would expect with Kubernetes.
+
+I personally recommend that you use auger over this tool. Code kept for reference only.
+
 # etcd-snapshot-to-json
 
 `etcd-snapshot-to-json` is a lightweight tool for displaying `etcd` snapshots in a JSON format.
